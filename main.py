@@ -4,8 +4,8 @@ from datetime import datetime
 import hashlib
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # z. B. -1002100117871
-TELEGRAM_THREAD_ID = os.getenv("TELEGRAM_THREAD_ID")  # z. B. 17247
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # z. B. -1002100117872
+TELEGRAM_THREAD_ID = os.getenv("TELEGRAM_THREAD_ID")  # z. B. 17248
 
 RSS_URL = "https://wildix.atlassian.net/wiki/spaces/DOC/pages/1256390657/WMS+Stable+Changelog+rel70"
 
