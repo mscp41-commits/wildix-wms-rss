@@ -65,7 +65,7 @@ def main():
     save_hash(current_hash)
 
     # Telegram Nachricht senden
-    message = f"🚀 *Neues WMS Stable Update entdeckt!*\n\n🔗 {RSS_URL}"
+    message = f"🚀 **Neues WMS Stable Update rel70 entdeckt!**\n\n🔗{RSS_URL}"
     send_telegram_message(message)
 
     print("Sent Telegram notification.")
