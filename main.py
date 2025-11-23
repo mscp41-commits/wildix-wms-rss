@@ -1,70 +1,74 @@
-import requests
-import xml.etree.ElementTree as ET
-import hashlib
 import os
+import requests
 from datetime import datetime
+import hashlib
 
-API_URL = "https://wildix.atlassian.net/wiki/rest/api/content/1256390657?expand=body.storage"
-FEED_PATH = "feed.xml"
-KEYWORD = "WMS Stable"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")  # z. B. -1002100117871
+TELEGRAM_THREAD_ID = os.getenv("TELEGRAM_THREAD_ID")  # z. B. 17247
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+RSS_URL = "https://wildix.atlassian.net/wiki/spaces/DOC/pages/1256390657/WMS+Stable+Changelog+rel70"
 
-
-def send_telegram(text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": text})
+STATE_FILE = "last_hash.txt"
 
 
-def generate_rss(items):
-    rss = ET.Element("rss", version="2.0")
-    channel = ET.SubElement(rss, "channel")
+def send_telegram_message(text):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
-    ET.SubElement(channel, "title").text = "Wildix WMS Stable Changelog"
-    ET.SubElement(channel, "link").text = "https://wildix.atlassian.net/wiki"
-    ET.SubElement(channel, "description").text = "Automatischer RSS Feed für WMS Stable Releases"
+    data = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": text,
+    }
 
-    for title, content in items:
-        item = ET.SubElement(channel, "item")
-        ET.SubElement(item, "title").text = title
-        ET.SubElement(item, "description").text = content
-        guid = hashlib.sha256(title.encode()).hexdigest()
-        ET.SubElement(item, "guid").text = guid
-        ET.SubElement(item, "pubDate").text = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+    # Topic / Kanal innerhalb der Gruppe setzen
+    if TELEGRAM_THREAD_ID and TELEGRAM_THREAD_ID != "":
+        data["message_thread_id"] = int(TELEGRAM_THREAD_ID)
 
-    tree = ET.ElementTree(rss)
-    tree.write(FEED_PATH, encoding="utf-8", xml_declaration=True)
+    requests.post(url, json=data)
 
 
-# Load Confluence Page
-resp = requests.get(API_URL)
-json_data = resp.json()
-html = json_data["body"]["storage"]["value"]
+def get_page_content(url):
+    """Liest die HTML-Seite und gibt nur den Text für Hashing zurück."""
+    r = requests.get(url)
+    r.raise_for_status()
+    return r.text
 
-# Extract headings starting with "WMS Stable"
-items = []
-for line in html.split("<h2"):
-    if KEYWORD in line:
-        title_start = line.find(">") + 1
-        title_end = line.find("</h2>")
-        title = line[title_start:title_end].strip()
-        items.append((title, "Neue Version gefunden."))
 
-# Load old feed hash
-old_hash = None
-if os.path.exists(FEED_PATH):
-    with open(FEED_PATH, "rb") as f:
-        old_hash = hashlib.sha256(f.read()).hexdigest()
+def save_hash(value):
+    with open(STATE_FILE, "w") as f:
+        f.write(value)
 
-# Generate new feed
-generate_rss(items)
 
-# Compare hash to check for new entries
-with open(FEED_PATH, "rb") as f:
-    new_hash = hashlib.sha256(f.read()).hexdigest()
+def load_hash():
+    if not os.path.exists(STATE_FILE):
+        return None
+    with open(STATE_FILE, "r") as f:
+        return f.read().strip()
 
-if old_hash != new_hash:
-    if items:
-        latest = items[0][0]
-        send_telegram(f"Neue Wildix WMS Stable Version entdeckt: {latest}")
+
+def main():
+    print("🔍 Checking for updates...")
+
+    html = get_page_content(RSS_URL)
+
+    # Hash der Seite erzeugen
+    current_hash = hashlib.sha256(html.encode("utf-8")).hexdigest()
+
+    last_hash = load_hash()
+
+    if last_hash == current_hash:
+        print("No updates found.")
+        return
+
+    print("⚠️ New update detected!")
+    save_hash(current_hash)
+
+    # Telegram Nachricht senden
+    message = f"🚀 *Neues WMS Stable Update entdeckt!*\n\n🔗 {RSS_URL}"
+    send_telegram_message(message)
+
+    print("Sent Telegram notification.")
+
+
+if __name__ == "__main__":
+    main()
