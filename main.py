@@ -1,5 +1,4 @@
 import os
-import feedparser
 import requests
 from datetime import datetime
 import hashlib
