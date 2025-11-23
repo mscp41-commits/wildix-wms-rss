@@ -20,11 +20,12 @@ def send_telegram_message(text):
         "text": text,
     }
 
-    # Topic / Kanal innerhalb der Gruppe setzen
-    if TELEGRAM_THREAD_ID and TELEGRAM_THREAD_ID != "":
+    if TELEGRAM_THREAD_ID:
         data["message_thread_id"] = int(TELEGRAM_THREAD_ID)
 
-    requests.post(url, json=data)
+    r = requests.post(url, json=data)
+
+    print("Telegram API response:", r.text)  # <---- WICHTIG
 
 
 def get_page_content(url):
